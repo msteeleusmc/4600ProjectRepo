@@ -29,46 +29,6 @@ int p_mutex=1, p_mutex2=1, ptid, iter=0;
 			return false;
 	}
 
-/*void P_unlink(int &p_mutex, list<int> &lst, int id){
-	cout<<id<<" in - ";
-while(1){
-	while(p_mutex==0);
-	p_mutex =0;
-	if(resourceCheck(lst)==false)
-	{
-		p_mutex=1;
-		continue;
-	}
-	else
-	break;
-	}
-	cout<<id<<"out\n";
-}
-void P_threadLock(int &p_mutex2)
-{
-	while(p_mutex2==0);
-	p_mutex2=0;
-}
-
-void V_threadLock(int &p_mutex2)
-{
-	p_mutex2=1;
-}
-
-void P_link(int &p_mutex){
-
-	while(p_mutex==0);
-
-	p_mutex=0;
-	//cout<<"Made it past the mutex in P_link and set Mutex to 0\n";
-}
-
-void V(int &p_mutex){
-
-	p_mutex=1;
-	return;
-}
-*/
 void link_list(int temp, list<int> &lst){
 
 		lst.push_back(temp);
