@@ -14,13 +14,9 @@ all: main.o
 main.o: main.cpp
 	g++ -c main.cpp -lpthread -lm -lrt
 
-open:
-	cat /tmp/msteele.txt
-
 run:
 	./all
 
 clean:
 	rm -f *.o
 	rm ./all
-	rm -f /tmp/msteele.txt
