@@ -3,142 +3,193 @@
 #include <semaphore.h>
 #include <mutex>
 #include <unistd.h>
+#include <sys/resource.h>
 
 #include <list>
 #include <queue>
 
 using namespace std;
 
-sem_t s_mutex;
-
-int process_cnt;
-
-list<int> freelist, list_1, list_2;
-int b = 0;
-int x = 0;
-int y = 0;
-int c = 0;
-
-void produce_information_in_block(){
-
-	b = 16;
-}
-
-void link(int temp, list<int> L){
-
-	L.push_back(temp);
-}
-
-void use_block_x_to_produce_info_in_y(){
-	x = b;
-	y = x;
-}
-
-void consume_information_in_block(){
-
-	c = x;
-}
-
-void* thread1(void* arg){
-
-	//wait
-	//sem_wait(&s_mutex);
-	process_cnt = 1;
-
-	cout << "Entered Thread " << (int)arg << "\n";
+sem_t P_unlink;
+sem_t P_threadLock;
+sem_t P_link;
 
 
-	//critical section
-	sleep(2);
-	//create the while loop here
-	while(1){
+int p_mutex=1, p_mutex2=1, ptid, iter=0;
+  list<int> freelist, list_1, list_2;
+	int b,x,y,c;
 
-		b = freelist.front();
-		cout << "\nVariable b := unlink(freelist)\n" << endl;
-		if(!freelist.empty())
-			freelist.pop_front();
 
-		produce_information_in_block();
-		cout << "\nVariable b now equals " << b << endl;
-		link(b, list_1);
-		cout << "\nVariable b is linked to list_1\n" << endl;
-		break;
+
+	bool resourceCheck(list<int> &lst)
+	{
+		if(lst.size()>0)
+			return true;
+			else
+			return false;
 	}
 
-	//signal
-	cout << "Exiting Thread " << (int)arg << "\n";
-	process_cnt = 2;
-	sem_post(&s_mutex);
+/*void P_unlink(int &p_mutex, list<int> &lst, int id){
+	cout<<id<<" in - ";
+while(1){
+	while(p_mutex==0);
+	p_mutex =0;
+	if(resourceCheck(lst)==false)
+	{
+		p_mutex=1;
+		continue;
+	}
+	else
+	break;
+	}
+	cout<<id<<"out\n";
+}
+void P_threadLock(int &p_mutex2)
+{
+	while(p_mutex2==0);
+	p_mutex2=0;
 }
 
-void* thread2(void* arg){
+void V_threadLock(int &p_mutex2)
+{
+	p_mutex2=1;
+}
 
-	//wait
-	sem_wait(&s_mutex);
-	if(process_cnt == 2){
+void P_link(int &p_mutex){
 
-		cout << "Entered Thread " << (int)arg << "\n";
+	while(p_mutex==0);
 
+	p_mutex=0;
+	//cout<<"Made it past the mutex in P_link and set Mutex to 0\n";
+}
+
+void V(int &p_mutex){
+
+	p_mutex=1;
+	return;
+}
+*/
+void link_list(int temp, list<int> &lst){
+
+		lst.push_back(temp);
+	}
+
+void link_freelist()
+{
+		freelist.push_back(0);
+}
+
+void use_block_x_to_produce_info_in_y(int &x, int &y){
+		y=x;
+		x=0;
+	}
+
+void consume_information_in_block(int &c){
+
+		c = 0;
+	}
+
+
+	void* thread(void* arg){
 		//critical section
-		sleep(2);
-		//while loop
+		int ptid = (int)arg;
+
+
+		//create the while loop here
+		if(ptid==1){
 		while(1){
 
-			x = list_1.front();
-			cout << "\nVariable x := unlink(list_1)\n" << endl;
-			if(!list_1.empty())
-				list_1.pop_front();
+			sem_wait(&P_threadLock);
+			//cout<<"Thread "<<ptid<<" Holds the lock\n";
+			if(resourceCheck(freelist)==false  || (freelist.size()==1 && resourceCheck(list_2)==false))
+			{
+				sem_post(&P_threadLock);
+        //cout<<"Thread "<<ptid<<" Released the lock\n";
+				continue;
+			}
 
-			y = freelist.front();
-			cout << "\nVaraible y := unlink(freelist)\n" << endl;
-			if(!freelist.empty())
-				freelist.pop_front();
 
-			use_block_x_to_produce_info_in_y();
+			sem_wait(&P_unlink);
+					b = freelist.back();
+					freelist.pop_back();
+					cout<<"Thread One Removed "<<b<<" from freelist\n";
+			sem_post(&P_unlink);
 
-			link(x, freelist);
-			cout << "\nVariable x linked to freelist with the value of " << x << "\n" << endl;
-			link(y, list_2);
-			cout << "\nVariable y linked to list_2 with the value of " << y << "\n" << endl;
-			break;
+			sem_wait(&P_link);
+					b=++iter;
+					link_list(b, list_1);
+				cout<<"Thread One Added "<<b<<" to list 1\n";
+			sem_post(&P_link);
+			sem_post(&P_threadLock);
+    //  cout<<"Thread "<<ptid<<" Released the lock\n";
+			 //break;
+			}
 		}
+			//while loop
+		if(ptid==2){
+		while(1){
+			sem_wait(&P_threadLock);
+			//cout<<"Thread "<<ptid<<" Holds the lock\n";
+			if(resourceCheck(list_1)==false || resourceCheck(freelist)==false)
+			{
+				sem_post(&P_threadLock);
+        //cout<<"Thread "<<ptid<<" Released the lock\n";
+				continue;
+			}
+				sem_wait(&P_unlink);
+						x = list_1.back();
+						list_1.pop_back();
+						cout<<"Thread Two Removed "<<x<<" from list 1\n";
 
-		//signal
-		cout << "Exiting Thread " << (int)arg << "\n";
+				sem_post(&P_unlink);
 
+				sem_wait(&P_unlink);
+						y = freelist.front();
+						freelist.pop_front();
+						cout<<"Thread Two Removed "<<y<<" from freelist\n";
+						use_block_x_to_produce_info_in_y(x,y);
+				sem_post(&P_unlink);
+
+
+
+				sem_wait(&P_link);
+						link_list(x, freelist);
+						cout<<"Thread Two Added "<<x<<" to freelist\n";
+				sem_post(&P_link);
+
+				sem_wait(&P_link);
+						link_list(y, list_2);
+						cout<<"Thread Two Added "<<y<<" to list 2\n";
+				sem_post(&P_link);
+				sem_post(&P_threadLock);
+        //cout<<"Thread "<<ptid<<" Released the lock\n";
+
+				}
+			}
+
+
+					if(ptid==3){
+					while(1){
+						sem_wait(&P_threadLock);
+						//cout<<"Thread "<<ptid<<" Holds the lock\n";
+						if(resourceCheck(list_2)==false)
+						{
+							sem_post(&P_threadLock);
+              //cout<<"Thread "<<ptid<<" Released the lock\n";
+							continue;
+						}
+						sem_wait(&P_unlink);
+								c = list_2.back();
+								list_2.pop_back();
+								cout<<"Thread Three Removed "<<c<<" from list 2\n"<<flush;
+								consume_information_in_block(c);
+						sem_post(&P_unlink);
+						sem_wait(&P_link);
+								link_list(c, freelist);
+								cout<<"Thread Three Added "<<c<<" to freelist\n";
+						sem_post(&P_link);
+						sem_post(&P_threadLock);
+          //  cout<<"Thread "<<ptid<<" Released the lock\n";
+						}
+					}
 	}
-	process_cnt = 3;
-	sem_post(&s_mutex);
-}
-
-void* thread3(void* arg){
-
-	//wait
-	sem_wait(&s_mutex);
-	if(process_cnt == 3){
-	//m_lock.lock();
-	cout << "Entered Thread " << (int)arg << "\n";
-
-	//critical section
-	sleep(2);
-	//while loop
-	while(1){
-
-		c = list_2.front();
-		cout << "\nVariable c := unlink(list_2)\n" << endl;
-		if(!list_2.empty())
-			list_2.pop_front();
-
-		consume_information_in_block();
-
-		link(c, freelist);
-		cout << "\nVariable c is linked to freelist with the value of " << c << "\n" << endl;
-		break;
-	}
-	//signal
-	cout << "Exiting Thread " << (int)arg << "\n";
-	process_cnt = 1;
-	//m_lock.unlock();
-	}
-	sem_post(&s_mutex);
-}
