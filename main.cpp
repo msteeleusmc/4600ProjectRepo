@@ -26,9 +26,13 @@ using namespace std;
 int main() {
 
 	int one = 1, two = 2, three = 3;
+	int N;
+	
+	cout << "\nEnter the number of N blocks for freelist ";
+	cin >> N;
 
 	//For-loop to link_free_list funciton which creates N number of empty blocks
-	for(int i = 0; i < 4; i++) {
+	for(int i = 0; i < N; i++) {
 
 		link_freelist();
 	}
